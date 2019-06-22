@@ -18,7 +18,14 @@ network = json.loads(networkJson.decode('utf-8'))  # JSONとしてパースす�
 class Pata(webapp2.RequestHandler):
     def get(self):
         # とりあえずAとBをつなぐだけで返事を作っていますけど、パタタコカシーーになるように自分で直してください！
-        pata = self.request.get("a") + self.request.get("b")
+        # pata = self.request.get("a") + self.request.get("b")
+        pata = ""
+        for i in range(max(len(self.request.get("a")), len(self.request.get("b")))):
+            if i < len(self.request.get("a")):
+                pata += self.request.get("a")[i] 
+            if i < len(self.request.get("b")):
+                pata += self.request.get("b")[i]
+
         self.response.headers['Content-Type'] = 'text/html; charset=UTF-8'
         # テンプレートの内容を埋め込んで、返事を返す。
         self.response.write(pataTmpl.render(pata=pata, request=self.request))

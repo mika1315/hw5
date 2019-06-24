@@ -13,7 +13,8 @@ pataTmpl = templateEnv.get_template("pata.html") # パタトクカシーー用�
 networkTmpl = templateEnv.get_template("norikae.html")  # 乗換案内用のテンプレートを"norikae.html"から読み込む。
 
 networkJson = urlfetch.fetch("https://tokyo.fantasy-transit.appspot.com/net?format=json").content  # ウェブサイトから電車の線路情報をJSON形式でダウンロードする
-network = json.loads(networkJson.decode('utf-8'))  # JSONとしてパースする（stringからdictのlistに変換する）
+# network = json.loads(networkJson.decode('utf-8'))  # JSONとしてパースする（stringからdictのlistに変換する）
+network = json.loads(networkJson)
 
 # このRequestHandlerでパタトカシーーのリクエストを処理して、結果を返す。
 class Root(webapp2.RequestHandler):
@@ -76,22 +77,29 @@ class Norikae(webapp2.RequestHandler):
 
             vertex = queue.popleft() # キューから次の探索地点を一つ取り出す
    
-            for neighbor in graph[vertex]: # 現在地から次に行けるポイントを調べる
-                if neighbor == destination:
-                    pre_station_dict[neighbor] = pre_station_dict[vertex]  + [neighbor]
-                    return pre_station_dict[neighbor]
+            if vertex in graph.keys():
+                for neighbor in graph[vertex]: # 現在地から次に行けるポイントを調べる
+                    if neighbor == destination:
+                        pre_station_dict[neighbor] = pre_station_dict[vertex]  + [neighbor]
+                        return pre_station_dict[neighbor]
 
-                elif neighbor not in visited:
-                    pre_station_dict[neighbor] = pre_station_dict[vertex] + [neighbor]
-                    visited.add(neighbor) # 「探索済みリスト」に取り出した地点を格納
-                    queue.append(neighbor)
-                  
+                    elif neighbor not in visited:
+                        pre_station_dict[neighbor] = pre_station_dict[vertex] + [neighbor]
+                        visited.add(neighbor) # 「探索済みリスト」に取り出した地点を格納
+                        queue.append(neighbor)
+                    
         return []
          
     def get(self):
         # 本当は入力したものを探索するようにしたいけどできない
         # route = self.bfs(self.request.get("origin").decode('utf-8'), self.request.get("destination").decode('utf-8'))
-        route = self.bfs(network[0]["Stations"][0], network[0]["Stations"][6]) # 品川と原宿
+        if self.request.get("origin") == '' or self.request.get("destination") == '':
+            origin = network[0]["Stations"][0] # 品川と原宿
+            destination = network[0]["Stations"][1]
+        else:
+            origin = self.request.get("origin")
+            destination = self.request.get("destination")
+        route = self.bfs(origin, destination)
         self.response.headers['Content-Type'] = 'text/html; charset=UTF-8'
         self.response.write(networkTmpl.render(route=route, request=self.request))
 

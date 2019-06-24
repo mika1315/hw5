@@ -49,18 +49,11 @@ class Norikae(webapp2.RequestHandler):
         graph = dict()
         for line in network:
             for i in range(len(line["Stations"])):
-                if line["Stations"][i] in graph.keys():# line["Stations"][i]がgraphにすでに入っているかどうか
-                    if i != 0: # 先頭じゃなかったら一つ前の駅を隣接リストに入れる
-                        graph[line["Stations"][i]].append(line["Stations"][i - 1])
-                    if i != len(line["Stations"]) - 1: # 最後じゃなかったら一つ後を隣接リストに入れる
-                        graph[line["Stations"][i]].append(line["Stations"][i + 1])
-                else:
-                    if i != 0: # 先頭じゃなかったら一つ前の駅を隣接リストに入れる
-                        # graph.setdefault(line["Stations"][i], []).append(line["Stations"][i - 1])
-                        graph[line['Stations'][i]] = [line['Stations'][i-1]]
-                    if i != len(line["Stations"]) - 1: # 最後じゃなかったら一つ後を隣接リストに入れる
-                        # graph.setdefault(line["Stations"][i], []).append(line["Stations"][i + 1])
-                        graph[line['Stations'][i]] = [line['Stations'][i+1]]
+                graph.setdefault(line["Stations"][i], [])
+                if i != 0: # 先頭じゃなかったら一つ前の駅を隣接リストに入れる
+                    graph[line["Stations"][i]].append(line["Stations"][i - 1])
+                if i != len(line["Stations"]) - 1: # 最後じゃなかったら一つ後を隣接リストに入れる
+                    graph[line["Stations"][i]].append(line["Stations"][i + 1])
         return graph
 
     def bfs(self, origin, destination):
@@ -94,14 +87,20 @@ class Norikae(webapp2.RequestHandler):
         # 本当は入力したものを探索するようにしたいけどできない
         # route = self.bfs(self.request.get("origin").decode('utf-8'), self.request.get("destination").decode('utf-8'))
         if self.request.get("origin") == '' or self.request.get("destination") == '':
-            origin = network[0]["Stations"][0] # 品川と原宿
+            origin = network[0]["Stations"][0] 
             destination = network[0]["Stations"][1]
+            route = []
+            result = "駅名を入れてね！".decode('utf-8')
         else:
             origin = self.request.get("origin")
             destination = self.request.get("destination")
-        route = self.bfs(origin, destination)
+            route = self.bfs(origin, destination)
+            if len(route) == 0:
+                result = "Not found!"
+            else:
+                result = "Found!"
         self.response.headers['Content-Type'] = 'text/html; charset=UTF-8'
-        self.response.write(networkTmpl.render(route=route, request=self.request))
+        self.response.write(networkTmpl.render(route=route, result=result, request=self.request))
 
 app = webapp2.WSGIApplication([
     ('/', Root),

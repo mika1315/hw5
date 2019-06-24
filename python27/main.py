@@ -33,8 +33,8 @@ class Pata(webapp2.RequestHandler):
         # とりあえずAとBをつなぐだけで返事を作っていますけど、パタタコカシーーになるように自分で直してください！
         # pata = self.request.get("a") + self.request.get("b")
         pata = ""
-        for i in range(max(len(self.request.get("a")), len(self.request.get("b")))):
-            if i < len(self.request.get("a")):
+        for i in range(max(len(self.request.get("a")), len(self.request.get("b")))): # 文字列の長さが長い方をとってくる
+            if i < len(self.request.get("a")): 
                 pata += self.request.get("a")[i] 
             if i < len(self.request.get("b")):
                 pata += self.request.get("b")[i]
@@ -48,16 +48,16 @@ class Norikae(webapp2.RequestHandler):
         graph = dict()
         for line in network:
             for i in range(len(line["Stations"])):
-                if line["Stations"][i] in graph.keys():
-                    if i != 0:
+                if line["Stations"][i] in graph.keys():# line["Stations"][i]がgraphにすでに入っているかどうか
+                    if i != 0: # 先頭じゃなかったら一つ前の駅を隣接リストに入れる
                         graph[line["Stations"][i]].append(line["Stations"][i - 1])
-                    if i != len(line["Stations"]) - 1:
+                    if i != len(line["Stations"]) - 1: # 最後じゃなかったら一つ後を隣接リストに入れる
                         graph[line["Stations"][i]].append(line["Stations"][i + 1])
                 else:
-                    if i != 0:
+                    if i != 0: # 先頭じゃなかったら一つ前の駅を隣接リストに入れる
                         # graph.setdefault(line["Stations"][i], []).append(line["Stations"][i - 1])
                         graph[line['Stations'][i]] = [line['Stations'][i-1]]
-                    if i != len(line["Stations"]) - 1:
+                    if i != len(line["Stations"]) - 1: # 最後じゃなかったら一つ後を隣接リストに入れる
                         # graph.setdefault(line["Stations"][i], []).append(line["Stations"][i + 1])
                         graph[line['Stations'][i]] = [line['Stations'][i+1]]
         return graph
@@ -89,8 +89,9 @@ class Norikae(webapp2.RequestHandler):
         return []
          
     def get(self):
-        route = self.bfs(network[0]["Stations"][0], network[0]["Stations"][6])
+        # 本当は入力したものを探索するようにしたいけどできない
         # route = self.bfs(self.request.get("origin").decode('utf-8'), self.request.get("destination").decode('utf-8'))
+        route = self.bfs(network[0]["Stations"][0], network[0]["Stations"][6]) # 品川と原宿
         self.response.headers['Content-Type'] = 'text/html; charset=UTF-8'
         self.response.write(networkTmpl.render(route=route, request=self.request))
 

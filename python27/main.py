@@ -15,6 +15,8 @@ networkTmpl = templateEnv.get_template("norikae.html")  # 乗換案内用のテ�
 networkJson = urlfetch.fetch("https://tokyo.fantasy-transit.appspot.com/net?format=json").content  # ウェブサイトから電車の線路情報をJSON形式でダウンロードする
 # network = json.loads(networkJson.decode('utf-8'))  # JSONとしてパースする（stringからdictのlistに変換する）
 network = json.loads(networkJson)
+outtageJson = urlfetch.fetch("https://tokyo.fantasy-transit.appspot.com/outtages?format=json").content
+outtage = json.loads(outtageJson)
 
 # このRequestHandlerでパタトカシーーのリクエストを処理して、結果を返す。
 class Root(webapp2.RequestHandler):
@@ -34,11 +36,13 @@ class Pata(webapp2.RequestHandler):
         # とりあえずAとBをつなぐだけで返事を作っていますけど、パタタコカシーーになるように自分で直してください！
         # pata = self.request.get("a") + self.request.get("b")
         pata = ""
-        for i in range(max(len(self.request.get("a")), len(self.request.get("b")))): # 文字列の長さが長い方をとってくる
-            if i < len(self.request.get("a")): 
-                pata += self.request.get("a")[i] 
-            if i < len(self.request.get("b")):
-                pata += self.request.get("b")[i]
+        input_a = self.request.get("a")
+        input_b = self.request.get("b")
+        for i in range(max(len(input_a), len(input_b))): # 文字列の長さが長い方をとってくる
+            if i < len(input_a): 
+                pata += input_a[i] 
+            if i < len(input_b):
+                pata += input_b[i]
 
         self.response.headers['Content-Type'] = 'text/html; charset=UTF-8'
         # テンプレートの内容を埋め込んで、返事を返す。
@@ -55,9 +59,15 @@ class Norikae(webapp2.RequestHandler):
                 if i != len(line["Stations"]) - 1: # 最後じゃなかったら一つ後を隣接リストに入れる
                     graph[line["Stations"][i]].append(line["Stations"][i + 1])
         return graph
+    
+    def setOuttage(self, graph, outtage): # 故障している駅を隣接リストから削除
+        for sta_pair in outtage:
+            graph[sta_pair["From"]].remove(sta_pair["To"])
+            graph[sta_pair["To"]].remove(sta_pair["From"])      
+        return graph
 
-    def bfs(self, origin, destination):
-        graph = self.setGraph(network)
+
+    def bfs(self, graph, origin, destination):
         visited = set()
         queue = collections.deque()
         pre_station_dict = dict() # ルートを格納
@@ -70,16 +80,16 @@ class Norikae(webapp2.RequestHandler):
 
             vertex = queue.popleft() # キューから次の探索地点を一つ取り出す
    
-            if vertex in graph.keys():
-                for neighbor in graph[vertex]: # 現在地から次に行けるポイントを調べる
-                    if neighbor == destination:
-                        pre_station_dict[neighbor] = pre_station_dict[vertex]  + [neighbor]
-                        return pre_station_dict[neighbor]
-
-                    elif neighbor not in visited:
-                        pre_station_dict[neighbor] = pre_station_dict[vertex] + [neighbor]
-                        visited.add(neighbor) # 「探索済みリスト」に取り出した地点を格納
-                        queue.append(neighbor)
+            if vertex not in graph.keys():
+                continue
+            for neighbor in graph[vertex]: # 現在地から次に行けるポイントを調べる
+                if neighbor in visited:
+                    continue
+                pre_station_dict[neighbor] = pre_station_dict[vertex] + [neighbor]
+                if neighbor == destination:
+                    return pre_station_dict[neighbor]
+                visited.add(neighbor)
+                queue.append(neighbor)
                     
         return []
          
@@ -87,14 +97,15 @@ class Norikae(webapp2.RequestHandler):
         # 本当は入力したものを探索するようにしたいけどできない
         # route = self.bfs(self.request.get("origin").decode('utf-8'), self.request.get("destination").decode('utf-8'))
         if self.request.get("origin") == '' or self.request.get("destination") == '':
-            origin = network[0]["Stations"][0] 
-            destination = network[0]["Stations"][1]
+            # origin = network[0]["Stations"][0] 
+            # destination = network[0]["Stations"][1]
             route = []
             result = "駅名を入れてね！".decode('utf-8')
         else:
             origin = self.request.get("origin")
             destination = self.request.get("destination")
-            route = self.bfs(origin, destination)
+            graph = self.setOuttage(self.setGraph(network), outtage)
+            route = self.bfs(graph, origin, destination)
             if len(route) == 0:
                 result = "Not found!"
             else:
